@@ -28,7 +28,7 @@ $page_title_map = [
     'manage_users' => 'Manajemen Pengguna', 'tambah_user' => 'Tambah Pengguna', 'edit_user' => 'Edit Pengguna',
     'ajukan_pencairan' => 'Ajukan Pencairan', 'arsip_surat' => 'Arsip Surat Balasan',
     'proses' => 'Proses Pencairan Dana', 'manage_saldo' => 'Manajemen Saldo', 'atur_saldo' => 'Atur Saldo Pengguna',
-    'profil' => 'Atur Profil', 'atur_sistem' => 'Pengaturan Sistem'
+    'profil' => 'Atur Profil', 'atur_sistem' => 'Pengaturan Sistem', 'arsip_lpj' => 'Arsip LPJ', 'peminjaman_tempat' => 'Peminjaman Tempat', 'verifikasi_tempat' => 'Verifikasi Tempat'
 ];
 $current_title = $page_title_map[$currentPage] ?? '';
 ?>
@@ -174,14 +174,24 @@ body.dark-mode .theme-icon-current {
                 <?php if (in_array($user_role, ['ormawa', 'bem', 'bpm'])):
                     if ($user_status === 'aktif'): ?>
                         <li>
-                            <a href="index.php?page=tambah" class="nav-link text-white <?php echo ($currentPage == 'tambah') ? 'active' : ''; ?>">
-                                <i class="bi bi-plus-circle me-2"></i> Buat Pengajuan
-                            </a>
-                        </li>
+                        <a href="index.php?page=tambah" class="nav-link text-white <?php echo ($currentPage == 'tambah') ? 'active' : ''; ?>">
+                            <i class="bi bi-file-earmark-plus me-2"></i> Buat Pengajuan
+                        </a>
+                    </li>
+                    <li>
+                        <a href="index.php?page=peminjaman_tempat" class="nav-link text-white <?php echo ($currentPage == 'peminjaman_tempat') ? 'active' : ''; ?>">
+                            <i class="bi bi-building me-2"></i> Peminjaman Tempat
+                        </a>
+                    </li>
                     <?php endif; ?>
                     <li>
                         <a href="index.php?page=riwayat" class="nav-link text-white <?php echo (in_array($currentPage, ['riwayat', 'detail', 'edit', 'upload_lpj', 'revisi_lpj'])) ? 'active' : ''; ?>">
                             <i class="bi bi-clock-history me-2"></i> Riwayat
+                        </a>
+                    </li>
+                    <li>
+                        <a href="index.php?page=arsip_lpj" class="nav-link text-white <?php echo ($currentPage == 'arsip_lpj') ? 'active' : ''; ?>">
+                            <i class="bi bi-archive-fill me-2"></i> Arsip LPJ
                         </a>
                     </li>
                 <?php endif; ?>
@@ -217,6 +227,11 @@ body.dark-mode .theme-icon-current {
                     <li>
                         <a href="index.php?page=arsip_surat" class="nav-link text-white <?php echo ($currentPage == 'arsip_surat') ? 'active' : ''; ?>">
                             <i class="bi bi-archive-fill me-2"></i> Arsip Surat
+                        </a>
+                    </li>
+                    <li>
+                        <a href="index.php?page=verifikasi_tempat" class="nav-link text-white <?php echo ($currentPage == 'verifikasi_tempat') ? 'active' : ''; ?>">
+                            <i class="bi bi-building-check me-2"></i> Verifikasi Tempat
                         </a>
                     </li>
                 <?php endif; ?>

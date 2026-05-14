@@ -7,7 +7,7 @@
  * Menambahkan CSS untuk memperbaiki warna teks tebal (nama kegiatan) 
  * pada popup SweetAlert2 di mode gelap (baris 108-114).
  */
-check_role(['ormawa']);
+check_role(['ormawa', 'sarpras', 'sarpras_barang']);
 
 // Ambil data penting dari session
 $user_id = $_SESSION['user_id'];
@@ -75,6 +75,66 @@ while ($row_ormawa = $result_notif_ormawa->fetch_assoc()) {
     $notifikasi_cair_ormawa[] = $row_ormawa;
 }
 $stmt_notif_ormawa->close();
+
+// --- Query untuk Calendar Peminjaman Tempat ---
+$events_calendar = [];
+$sql_cal = "SELECT p.*, r.nama_ruangan, u.nama_lengkap AS nama_ormawa 
+            FROM peminjaman_tempat p 
+            JOIN master_ruangan r ON p.id_ruangan = r.id_ruangan 
+            JOIN users u ON p.id_user_ormawa = u.id_user 
+            WHERE p.status != 'Ditolak'";
+$res_cal = $conn->query($sql_cal);
+if ($res_cal) {
+    while($row = $res_cal->fetch_assoc()){
+        $color = ($row['status'] == 'Disetujui') ? '#198754' : '#ffc107'; // Hijau jika disetujui, kuning jika pending
+        $textColor = ($row['status'] == 'Disetujui') ? '#fff' : '#000';
+        
+        $events_calendar[] = [
+            'title' => $row['nama_ruangan'] . ' - ' . $row['nama_ormawa'],
+            'start' => $row['tgl_mulai'] . 'T' . $row['jam_mulai'],
+            'end' => $row['tgl_selesai'] . 'T' . $row['jam_selesai'],
+            'color' => $color,
+            'textColor' => $textColor,
+            'description' => $row['nama_kegiatan']
+        ];
+    }
+}
+
+// 2. Ambil Jadwal Rapat
+$sql_cal_rapat = "SELECT * FROM jadwal_rapat WHERE status = 'Direncanakan'";
+$res_cal_r = $conn->query($sql_cal_rapat);
+if ($res_cal_r) {
+    while($row = $res_cal_r->fetch_assoc()){
+        $events_calendar[] = [
+            'title' => '[RAPAT] ' . $row['judul_rapat'],
+            'start' => $row['tanggal_rapat'] . 'T' . $row['jam_rapat'],
+            'color' => '#f59e0b', 
+            'textColor' => '#fff',
+            'description' => 'Agenda: ' . $row['deskripsi'] . ' | Lokasi: ' . $row['lokasi']
+        ];
+    }
+}
+
+// --- Query untuk Pengumuman Terakhir (BEM) ---
+$stmt_ann = $conn->prepare("SELECT judul, isi, tanggal_upload FROM pengumuman ORDER BY tanggal_upload DESC LIMIT 1");
+$stmt_ann->execute();
+$latest_announcement = $stmt_ann->get_result()->fetch_assoc();
+$stmt_ann->close();
+
+// --- Query untuk Jadwal Rapat Mendatang ---
+$today = date('Y-m-d');
+$stmt_rapat = $conn->prepare("SELECT r.*, u.nama_lengkap as penyelenggara 
+                             FROM jadwal_rapat r 
+                             JOIN users u ON r.id_penyelenggara = u.id_user 
+                             WHERE r.tanggal_rapat >= ? AND r.status = 'Direncanakan'
+                             ORDER BY r.tanggal_rapat ASC, r.jam_rapat ASC 
+                             LIMIT 5");
+$stmt_rapat->bind_param("s", $today);
+$stmt_rapat->execute();
+$meetings_res = $stmt_rapat->get_result();
+$stmt_rapat->close();
+
+$events_json = json_encode($events_calendar);
 ?>
 
 <!-- Kustomisasi CSS -->
@@ -122,6 +182,38 @@ $stmt_notif_ormawa->close();
             <p class="text-muted">Selamat Datang kembali, <?php echo htmlspecialchars($nama_lengkap); ?>!</p>
         </div>
     </div>
+
+    <!-- Pengumuman Penting (BEM) -->
+    <?php if ($latest_announcement): ?>
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm rounded-4 overflow-hidden position-relative" style="background: linear-gradient(90deg, #1e3a8a 0%, #3b82f6 100%); color: white;">
+                <div class="card-body p-4">
+                    <div class="row align-items-center">
+                        <div class="col-auto">
+                            <div class="bg-white bg-opacity-25 rounded-circle d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+                                <i class="bi bi-megaphone-fill fs-4 text-white"></i>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <h5 class="fw-bold mb-1" style="color: #ffffff !important;">Pengumuman Penting!</h5>
+                            <p class="mb-0 small" style="color: rgba(255, 255, 255, 0.9) !important; font-weight: 500;">
+                                <?php echo htmlspecialchars($latest_announcement['judul']); ?>
+                            </p>
+                        </div>
+                        <div class="col-auto">
+                            <a href="index.php?page=pusat_informasi" class="btn btn-light btn-sm rounded-pill px-4 fw-bold shadow-sm">
+                                <i class="bi bi-eye me-1"></i> Baca Detail
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <!-- Subtle Icon Background -->
+                <i class="bi bi-info-circle position-absolute" style="font-size: 7rem; right: -1rem; bottom: -2rem; opacity: 0.1; color: white;"></i>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
 
     <!-- Alert Status Akun -->
     <?php if ($status_akun == 'nonaktif'): ?>
@@ -225,7 +317,57 @@ $stmt_notif_ormawa->close();
                 </div>
             </div>
         </div>
-        <div class="col-lg-4 col-md-12 mb-4">
+    <!-- Agenda Rapat & Informasi Akun -->
+    <div class="row">
+        <div class="col-lg-8 mb-4">
+            <div class="card shadow-sm border-4 h-100">
+                <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-calendar-check me-2"></i>Agenda Rapat Mendatang</h5>
+                    <a href="index.php?page=jadwal_rapat" class="btn btn-link btn-sm text-decoration-none">Lihat Semua</a>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <tbody>
+                                <?php if ($meetings_res->num_rows > 0): ?>
+                                    <?php while ($rapat = $meetings_res->fetch_assoc()): ?>
+                                        <tr>
+                                            <td style="width: 80px;" class="text-center border-end">
+                                                <div class="fw-bold text-primary"><?php echo date('d', strtotime($rapat['tanggal_rapat'])); ?></div>
+                                                <div class="small text-muted text-uppercase"><?php echo date('M', strtotime($rapat['tanggal_rapat'])); ?></div>
+                                            </td>
+                                            <td class="px-3">
+                                                <div class="fw-bold"><?php echo htmlspecialchars($rapat['judul_rapat']); ?></div>
+                                                <div class="small text-muted">
+                                                    <i class="bi bi-clock me-1"></i> <?php echo date('H:i', strtotime($rapat['jam_rapat'])); ?> WIB 
+                                                    <span class="mx-2">|</span>
+                                                    <i class="bi bi-geo-alt me-1"></i> <?php echo htmlspecialchars($rapat['lokasi']); ?>
+                                                </div>
+                                            </td>
+                                            <td class="text-end px-3">
+                                                <?php if (!empty($rapat['link_meeting'])): ?>
+                                                    <a href="<?php echo $rapat['link_meeting']; ?>" target="_blank" class="btn btn-sm btn-outline-primary rounded-pill px-3">Join</a>
+                                                <?php else: ?>
+                                                    <span class="badge bg-light text-dark border">Offline</span>
+                                                <?php endif; ?>
+                                            </td>
+                                        </tr>
+                                    <?php endwhile; ?>
+                                <?php else: ?>
+                                    <tr>
+                                        <td colspan="3" class="text-center py-4 text-muted">
+                                            <i class="bi bi-calendar-x d-block fs-2 mb-2"></i>
+                                            Belum ada agenda rapat mendatang.
+                                        </td>
+                                    </tr>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4 mb-4">
             <div class="card shadow-sm h-100 border-4">
                 <div class="card-header bg-white border-0 py-3">
                     <h5 class="mb-0"><i class="bi bi-person-badge-fill me-2"></i>Informasi Akun</h5>
@@ -255,10 +397,28 @@ $stmt_notif_ormawa->close();
             </div>
         </div>
     </div>
+
+    <!-- Kalender Peminjaman Tempat -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card border-4 shadow-sm h-100 card-hover">
+                <div class="card-header bg-white border-0 py-3">
+                    <h5 class="mb-0"><i class="bi bi-calendar-event me-2"></i> Jadwal Pemakaian Fasilitas / Gedung</h5>
+                </div>
+                <div class="card-body">
+                    <div id="calendar"></div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- Library Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<!-- FullCalendar -->
+<link href='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css' rel='stylesheet' />
+<script src='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js'></script>
 
 <!-- Script untuk menginisialisasi Chart -->
 <script>
@@ -322,8 +482,49 @@ document.addEventListener("DOMContentLoaded", function() {
             }
         });
     }
+
+    // Initialize Calendar
+    var calendarEl = document.getElementById('calendar');
+    if(calendarEl) {
+        var calendar = new FullCalendar.Calendar(calendarEl, {
+            initialView: 'dayGridMonth',
+            headerToolbar: {
+                left: 'prev,next today',
+                center: 'title',
+                right: 'dayGridMonth,timeGridWeek,timeGridDay'
+            },
+            events: <?php echo $events_json; ?>,
+            eventDisplay: 'block',
+            eventTimeFormat: { 
+                hour: '2-digit',
+                minute: '2-digit',
+                meridiem: false,
+                hour12: false
+            },
+            eventClick: function(info) {
+                Swal.fire({
+                    title: info.event.title,
+                    text: 'Kegiatan: ' + info.event.extendedProps.description,
+                    icon: 'info'
+                });
+            }
+        });
+        calendar.render();
+    }
 });
 </script>
+
+<style>
+.fc-event {
+    border: none !important;
+    padding: 2px 4px !important;
+    font-size: 0.85rem !important;
+    border-radius: 4px !important;
+}
+.fc-daygrid-event-dot {
+    display: none !important;
+}
+</style>
 
 <!-- === PENAMBAHAN BARU: Skrip untuk SweetAlert2 Notifikasi Dana Cair === -->
 <?php if (!empty($notifikasi_cair_ormawa)): ?>

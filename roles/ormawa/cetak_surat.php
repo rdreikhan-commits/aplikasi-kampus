@@ -135,13 +135,19 @@ if (in_array(strtolower(trim($pengajuan['status'])), $final_statuses_for_qr)) {
     
     $qr_content_url = $base_url_correct . 'index.php?page=verify_page&id=' . $id_pengajuan . '&verify=' . $kode_unik;
     
-    $qr_dir = 'uploads/qrcode/';
-    if (!is_dir($qr_dir)) mkdir($qr_dir, 0777, true);
-    $qr_file_name = 'qrcode_' . $id_pengajuan . '.png';
-    $qr_file_path = $qr_dir . $qr_file_name;
+    // Periksa apakah ekstensi GD aktif (dibutuhkan oleh phpqrcode)
+    if (function_exists('imagecreate')) {
+        $qr_dir = 'uploads/qrcode/';
+        if (!is_dir($qr_dir)) mkdir($qr_dir, 0777, true);
+        $qr_file_name = 'qrcode_' . $id_pengajuan . '.png';
+        $qr_file_path = $qr_dir . $qr_file_name;
 
-    if (file_exists($qr_file_path)) unlink($qr_file_path);
-    QRcode::png($qr_content_url, $qr_file_path, QR_ECLEVEL_L, 4);
+        if (file_exists($qr_file_path)) unlink($qr_file_path);
+        QRcode::png($qr_content_url, $qr_file_path, QR_ECLEVEL_L, 4);
+    } else {
+        // Fallback: Gunakan API eksternal jika GD tidak aktif
+        $qr_file_path = 'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=' . urlencode($qr_content_url);
+    }
 }
 ?>
 
@@ -253,9 +259,9 @@ if (in_array(strtolower(trim($pengajuan['status'])), $final_statuses_for_qr)) {
                 <p class="jabatan">Kepala BKKH,</p>
 
                 <a href="<?php echo htmlspecialchars($qr_content_url); ?>" target="_blank" title="Klik untuk verifikasi">
-                    <?php if (!empty($qr_file_path) && file_exists($qr_file_path)): ?>
+                    <?php if (!empty($qr_file_path)): ?>
                         <img 
-                            src="<?php echo $qr_file_path; ?>?t=<?php echo time(); ?>" 
+                            src="<?php echo htmlspecialchars($qr_file_path); ?>" 
                             alt="QR Code Verifikasi" 
                             class="barcode-img"
                         >

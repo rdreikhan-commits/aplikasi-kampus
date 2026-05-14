@@ -185,7 +185,7 @@ INSERT INTO `users` (`id_user`, `nama_lengkap`, `username`, `password`, `role`, 
 (6, 'Bendahara', 'bendahara', '$2y$10$O1nAQbhoBQwujD1nsU3Lo.fX0Gy0sYA96qbI7KZNfAYwcBtjGtJbO', 'bendahara', 'user_6_1758674399.png', 'aktif', 0.00),
 (7, 'BEM', 'bem', '$2y$10$I31DaeVy93wIKsjlP/BfceFWuAbrQAvMbPDlxiWhynsLZIVkwVL8S', 'bem', NULL, 'aktif', 7000000.00),
 (8, 'Himatif', 'himatif', '$2y$10$GNJyZdalD1Xy7oQnxsDvGu0V0cTpHdSOuGaD.kYnSSOCKQW9V/YY2', 'ormawa', 'user_8_1758723472.jpg', 'aktif', 3000000.00),
-(13, 'Ncep Jainul Hayat', 'bkkh', '$2y$10$PmGf0e0N8MCVNk2WQijx9OISW.NHmaL2IGSZ0wpw5I.6HKf03rUDm', 'bkh', 'user_13_1759232167.png', 'aktif', 0.00),
+(13, 'Ncep Jainul Hayat', 'bkkh', '$2y$10$PmGf0e0N8MCVNk2WQijx9OISW.NHmaL2IGSZ0wpw5I.6HKf03rUDm', 'bkh', 'user_13_1759232167.png', 'aktif', 0.00);
 
 
 --

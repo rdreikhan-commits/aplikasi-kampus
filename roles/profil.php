@@ -6,7 +6,7 @@
 
 // Ambil data user yang sedang login dari database
 $id_user = $_SESSION['user_id'];
-$stmt = $conn->prepare("SELECT nama_lengkap, username, foto_profil FROM users WHERE id_user = ?");
+$stmt = $conn->prepare("SELECT nama_lengkap, username, foto_profil, logo_ormawa, nama_ketua, nama_sekretaris, nama_bendahara, ttd_ketua, ttd_sekretaris, ttd_bendahara FROM users WHERE id_user = ?");
 if ($stmt === false) {
     die("Gagal mempersiapkan statement: " . $conn->error);
 }
@@ -47,14 +47,59 @@ $foto_path = !empty($user['foto_profil']) ? 'uploads/profil/' . $user['foto_prof
                             <input type="text" name="nama_lengkap" id="nama_lengkap" class="form-control" value="<?php echo htmlspecialchars($user['nama_lengkap']); ?>" required>
                         </div>
 
-                        <div class="mb-3">
-                            <label for="foto_profil" class="form-label">Ganti Foto Profil (Opsional)</label>
-                            <input type="file" name="foto_profil" id="foto_profil" class="form-control" accept="image/png, image/jpeg, image/jpg">
-                            <small class="form-text text-muted">Format yang didukung: JPG, PNG. Maksimal 2MB.</small>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="foto_profil" class="form-label">Ganti Foto Profil (Opsional)</label>
+                                <input type="file" name="foto_profil" id="foto_profil" class="form-control" accept="image/png, image/jpeg, image/jpg">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="logo_ormawa" class="form-label">Logo Ormawa (Untuk Kop Surat)</label>
+                                <input type="file" name="logo_ormawa" id="logo_ormawa" class="form-control" accept="image/png, image/jpeg, image/jpg">
+                            </div>
+                        </div>
+                        <small class="form-text text-muted">Format: JPG, PNG. Maksimal 2MB.</small>
+
+                        <hr>
+                        <h5 class="mb-3 text-secondary">Struktur Organigram & TTD Digital</h5>
+                        
+                        <!-- Ketua -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Nama Ketua</label>
+                                <input type="text" name="nama_ketua" class="form-control" value="<?php echo htmlspecialchars($user['nama_ketua'] ?? ''); ?>" placeholder="Nama Lengkap Ketua">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">TTD Ketua (PNG Transparan)</label>
+                                <input type="file" name="ttd_ketua" class="form-control" accept="image/png">
+                            </div>
                         </div>
 
-                        <div class="d-grid">
-                            <button type="submit" class="btn btn-primary">Simpan Perubahan</button>
+                        <!-- Sekretaris -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Nama Sekretaris</label>
+                                <input type="text" name="nama_sekretaris" class="form-control" value="<?php echo htmlspecialchars($user['nama_sekretaris'] ?? ''); ?>" placeholder="Nama Lengkap Sekretaris">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">TTD Sekretaris (PNG Transparan)</label>
+                                <input type="file" name="ttd_sekretaris" class="form-control" accept="image/png">
+                            </div>
+                        </div>
+
+                        <!-- Bendahara -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Nama Bendahara</label>
+                                <input type="text" name="nama_bendahara" class="form-control" value="<?php echo htmlspecialchars($user['nama_bendahara'] ?? ''); ?>" placeholder="Nama Lengkap Bendahara">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">TTD Bendahara (PNG Transparan)</label>
+                                <input type="file" name="ttd_bendahara" class="form-control" accept="image/png">
+                            </div>
+                        </div>
+
+                        <div class="d-grid mt-4">
+                            <button type="submit" class="btn btn-primary btn-lg">Simpan Perubahan Profil</button>
                         </div>
                     </form>
                 </div>

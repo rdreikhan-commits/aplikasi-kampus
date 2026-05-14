@@ -73,7 +73,7 @@ if (!empty($user_ids)) {
 ?>
 
 <div class="container-fluid px-4">
-    <h3 class="mt-4">Rincian Saldo</h3>
+    <h3 class="mt-4">Manajemen Saldo</h3>
     <ol class="breadcrumb mb-4">
         <li class="breadcrumb-item active">Daftar Rincian Saldo Pengguna</li>
     </ol>

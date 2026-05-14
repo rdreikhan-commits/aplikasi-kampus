@@ -70,6 +70,8 @@ if (!$user) {
                         <option value="bkh" <?php if($user['role'] == 'bkh') echo 'selected'; ?>>BKKH</option>
                         <option value="wr3" <?php if($user['role'] == 'wr3') echo 'selected'; ?>>WR3</option>
                         <option value="bendahara" <?php if($user['role'] == 'bendahara') echo 'selected'; ?>>Bendahara</option>
+                        <option value="sarpras" <?php if($user['role'] == 'sarpras') echo 'selected'; ?>>Sarpras Ruangan</option>
+                        <option value="sarpras_barang" <?php if($user['role'] == 'sarpras_barang') echo 'selected'; ?>>Sarpras Barang</option>
                     </select>
                 </div>
                 <button type="submit" class="btn btn-primary">Update Data</button>

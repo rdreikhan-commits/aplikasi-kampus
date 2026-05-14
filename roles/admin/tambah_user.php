@@ -52,6 +52,8 @@ check_role(['bkh']);
                         <option value="bkh">BKKH</option>
                         <option value="wr3">WR3</option>
                         <option value="bendahara">Bendahara</option>
+                        <option value="sarpras">Sarpras Ruangan</option>
+                        <option value="sarpras_barang">Sarpras Barang</option>
                     </select>
                 </div>
                 <button type="submit" class="btn btn-primary">Simpan</button>

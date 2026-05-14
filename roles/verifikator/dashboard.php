@@ -109,6 +109,8 @@ if ($user_role == 'bkh') {
     $result_siap_diajukan = $stmt_siap_data->get_result();
     $count_siap_diajukan = $result_siap_diajukan->num_rows;
 
+    $sql_lpj_data = "SELECT p.id_pengajuan, p.nama_kegiatan, p.tanggal_upload_lpj, u.nama_lengkap AS nama_ormawa FROM pengajuan p JOIN users u ON p.id_user_ormawa = u.id_user WHERE status = ? ORDER BY p.tanggal_upload_lpj DESC";
+
     $status_arsip = [
         'Disetujui WR3, Siap Diajukan ke Bendahara', 'Diajukan ke Bendahara',
         'Dana Cair', 'LPJ Verifikasi BKKH', 'LPJ Ditolak BKKH', 'Selesai'
@@ -122,16 +124,106 @@ if ($user_role == 'bkh') {
     $stmt_butuh_nomor->execute();
     $result_butuh_nomor = $stmt_butuh_nomor->get_result();
     $count_butuh_nomor = $result_butuh_nomor->fetch_assoc()['total'] ?? 0;
-}
 
+    // --- BARU: Verifikasi Tempat (Pending BKKH) ---
+    $sql_count_tempat = "SELECT COUNT(*) as total FROM peminjaman_tempat WHERE status_bkkh = 'Pending'";
+    $count_tempat_bkkh = $conn->query($sql_count_tempat)->fetch_assoc()['total'] ?? 0;
+
+    // --- BARU: Verifikasi Barang (Pending BKKH) ---
+    $sql_count_barang = "SELECT COUNT(*) as total FROM peminjaman_barang WHERE status_bkkh = 'Pending'";
+    $count_barang_bkkh = $conn->query($sql_count_barang)->fetch_assoc()['total'] ?? 0;
+}
 if (!empty($status_lpj_to_check)) {
-    $sql_lpj_data = "SELECT p.id_pengajuan, p.nama_kegiatan, p.tanggal_update, u.nama_lengkap AS nama_ormawa FROM pengajuan p JOIN users u ON p.id_user_ormawa = u.id_user WHERE p.status = ? ORDER BY p.tanggal_update DESC";
     $stmt_lpj_data = $conn->prepare($sql_lpj_data);
     $stmt_lpj_data->bind_param("s", $status_lpj_to_check);
     $stmt_lpj_data->execute();
     $result_lpj = $stmt_lpj_data->get_result();
     $count_lpj = $result_lpj->num_rows;
 }
+
+// --- Query untuk Pengumuman Terakhir (BEM) ---
+$stmt_ann = $conn->prepare("SELECT judul, isi, tanggal_upload FROM pengumuman ORDER BY tanggal_upload DESC LIMIT 1");
+$stmt_ann->execute();
+$latest_announcement = $stmt_ann->get_result()->fetch_assoc();
+$stmt_ann->close();
+
+// --- Query untuk Jadwal Rapat Mendatang ---
+$today = date('Y-m-d');
+$stmt_rapat = $conn->prepare("SELECT r.*, u.nama_lengkap as penyelenggara 
+                             FROM jadwal_rapat r 
+                             JOIN users u ON r.id_penyelenggara = u.id_user 
+                             WHERE r.tanggal_rapat >= ? AND r.status = 'Direncanakan'
+                             ORDER BY r.tanggal_rapat ASC, r.jam_rapat ASC 
+                             LIMIT 5");
+$stmt_rapat->bind_param("s", $today);
+$stmt_rapat->execute();
+$meetings_res = $stmt_rapat->get_result();
+$stmt_rapat->close();
+
+// --- Query untuk Calendar Terpadu (Ruangan & Barang) ---
+$events_calendar = [];
+
+// 1. Ambil Peminjaman Tempat
+$sql_cal_tempat = "SELECT p.*, r.nama_ruangan, u.nama_lengkap AS nama_ormawa 
+            FROM peminjaman_tempat p 
+            JOIN master_ruangan r ON p.id_ruangan = r.id_ruangan 
+            JOIN users u ON p.id_user_ormawa = u.id_user 
+            WHERE p.status_sarpras != 'Ditolak'";
+$res_cal_t = $conn->query($sql_cal_tempat);
+while($row = $res_cal_t->fetch_assoc()){
+    $events_calendar[] = [
+        'title' => '[RUANGAN] ' . $row['nama_ruangan'] . ' - ' . $row['nama_ormawa'],
+        'start' => $row['tgl_mulai'] . 'T' . $row['jam_mulai'],
+        'end' => $row['tgl_selesai'] . 'T' . $row['jam_selesai'],
+        'color' => '#6366f1', 
+        'textColor' => '#fff',
+        'description' => 'Kegiatan: ' . $row['nama_kegiatan']
+    ];
+}
+
+// 2. Ambil Peminjaman Barang
+$sql_cal_barang = "SELECT p.*, u.nama_lengkap AS nama_ormawa 
+            FROM peminjaman_barang p 
+            JOIN users u ON p.id_user_ormawa = u.id_user 
+            WHERE p.status_sarpras != 'Ditolak'";
+$res_cal_b = $conn->query($sql_cal_barang);
+while($row = $res_cal_b->fetch_assoc()){
+    $items = json_decode($row['kebutuhan_barang'], true);
+    $item_list = "";
+    if(is_array($items)){
+        foreach($items as $it){
+            $id_b = isset($it['id_barang']) ? (int)$it['id_barang'] : 0;
+            if ($id_b > 0) {
+                $b_res = $conn->query("SELECT nama_barang FROM master_barang WHERE id_barang = $id_b");
+                $b_inf = $b_res ? $b_res->fetch_assoc() : null;
+                $item_list .= ($b_inf['nama_barang'] ?? 'Item') . " (".$it['qty']."), ";
+            }
+        }
+    }
+    $events_calendar[] = [
+        'title' => '[BARANG] ' . $row['nama_ormawa'],
+        'start' => $row['tgl_mulai'],
+        'end' => date('Y-m-d', strtotime($row['tgl_selesai'] . ' +1 day')), // FullCalendar end date is exclusive
+        'color' => '#10b981', 
+        'textColor' => '#fff',
+        'description' => 'Kegiatan: ' . $row['nama_kegiatan'] . ' | Barang: ' . rtrim($item_list, ', ')
+    ];
+}
+
+// 3. Ambil Jadwal Rapat
+$sql_cal_rapat = "SELECT * FROM jadwal_rapat WHERE status = 'Direncanakan'";
+$res_cal_r = $conn->query($sql_cal_rapat);
+while($row = $res_cal_r->fetch_assoc()){
+    $events_calendar[] = [
+        'title' => '[RAPAT] ' . $row['judul_rapat'],
+        'start' => $row['tanggal_rapat'] . 'T' . $row['jam_rapat'],
+        'color' => '#f59e0b', 
+        'textColor' => '#fff',
+        'description' => 'Agenda: ' . $row['deskripsi'] . ' | Lokasi: ' . $row['lokasi']
+    ];
+}
+
+$events_json = json_encode($events_calendar);
 ?>
 
 <!-- Kustomisasi CSS untuk efek hover, gradient, dan responsivitas -->
@@ -173,6 +265,84 @@ if (!empty($status_lpj_to_check)) {
         <div>
             <h1 class="h3 mb-1"><?php echo $page_title; ?></h1>
             <p class="text-muted">Selamat Datang kembali, <?php echo htmlspecialchars($nama_lengkap); ?>!</p>
+        </div>
+    </div>
+
+    <!-- Pengumuman Penting (BEM) -->
+    <?php if ($latest_announcement): ?>
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm rounded-4 overflow-hidden position-relative" style="background: linear-gradient(90deg, #1e3a8a 0%, #3b82f6 100%); color: white;">
+                <div class="card-body p-4">
+                    <div class="row align-items-center">
+                        <div class="col-auto">
+                            <div class="bg-white bg-opacity-25 rounded-circle d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+                                <i class="bi bi-megaphone-fill fs-4 text-white"></i>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <h5 class="fw-bold mb-1" style="color: #ffffff !important;">Pengumuman Penting!</h5>
+                            <p class="mb-0 small" style="color: rgba(255, 255, 255, 0.9) !important; font-weight: 500;">
+                                <?php echo htmlspecialchars($latest_announcement['judul']); ?>
+                            </p>
+                        </div>
+                        <div class="col-auto">
+                            <a href="index.php?page=pusat_informasi" class="btn btn-light btn-sm rounded-pill px-4 fw-bold shadow-sm">
+                                <i class="bi bi-eye me-1"></i> Baca Detail
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <i class="bi bi-info-circle position-absolute" style="font-size: 7rem; right: -1rem; bottom: -2rem; opacity: 0.1; color: white;"></i>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
+
+    <!-- Agenda Rapat Mendatang -->
+    <div class="card mb-4 shadow-sm border-4 border-start border-warning">
+        <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="bi bi-calendar-check-fill me-2 text-warning"></i>Agenda Rapat & Koordinasi</h5>
+            <a href="index.php?page=jadwal_rapat" class="btn btn-link btn-sm text-decoration-none">Kelola Jadwal</a>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr class="small">
+                            <th>Waktu</th>
+                            <th>Agenda</th>
+                            <th>Lokasi</th>
+                            <th>Penyelenggara</th>
+                            <th class="text-center">Link</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if ($meetings_res->num_rows > 0): ?>
+                            <?php while ($rapat = $meetings_res->fetch_assoc()): ?>
+                                <tr>
+                                    <td>
+                                        <div class="fw-bold"><?php echo date('d M Y', strtotime($rapat['tanggal_rapat'])); ?></div>
+                                        <div class="small text-muted"><?php echo date('H:i', strtotime($rapat['jam_rapat'])); ?> WIB</div>
+                                    </td>
+                                    <td><span class="fw-bold"><?php echo htmlspecialchars($rapat['judul_rapat']); ?></span></td>
+                                    <td><i class="bi bi-geo-alt me-1"></i> <?php echo htmlspecialchars($rapat['lokasi']); ?></td>
+                                    <td><?php echo htmlspecialchars($rapat['penyelenggara']); ?></td>
+                                    <td class="text-center">
+                                        <?php if (!empty($rapat['link_meeting'])): ?>
+                                            <a href="<?php echo $rapat['link_meeting']; ?>" target="_blank" class="btn btn-sm btn-primary rounded-pill px-3">Join</a>
+                                        <?php else: ?>
+                                            <span class="text-muted small">Offline</span>
+                                        <?php endif; ?>
+                                    </td>
+                                </tr>
+                            <?php endwhile; ?>
+                        <?php else: ?>
+                            <tr><td colspan="5" class="text-center py-4 text-muted">Belum ada agenda rapat terdaftar.</td></tr>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
     
@@ -275,6 +445,38 @@ if (!empty($status_lpj_to_check)) {
                         <h3 class="fw-bold mb-0"><?php echo $count_siap_diajukan; ?></h3>
                         <p class="text-muted mb-0">Siap ke Bendahara</p>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- BARU: Kartu Verifikasi Tempat -->
+        <div class="col-xl-4 col-md-6 mb-4">
+            <div class="card border-start border-5 border-secondary shadow-sm h-100 card-hover">
+                <div class="card-body p-4 d-flex align-items-center">
+                    <div class="flex-shrink-0 bg-secondary text-white rounded-3 d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;"><i class="bi bi-building-check fs-2"></i></div>
+                    <div class="flex-grow-1 ms-3 text-end">
+                        <h3 class="fw-bold mb-0"><?php echo $count_tempat_bkkh; ?></h3>
+                        <p class="text-muted mb-0">Verifikasi Tempat</p>
+                    </div>
+                </div>
+                <div class="card-footer bg-transparent border-0 text-end py-2">
+                    <a href="index.php?page=verifikasi_tempat" class="small stretched-link text-decoration-none">Kelola <i class="bi bi-arrow-right"></i></a>
+                </div>
+            </div>
+        </div>
+
+        <!-- BARU: Kartu Verifikasi Barang -->
+        <div class="col-xl-4 col-md-6 mb-4">
+            <div class="card border-start border-5 border-dark shadow-sm h-100 card-hover">
+                <div class="card-body p-4 d-flex align-items-center">
+                    <div class="flex-shrink-0 bg-dark text-white rounded-3 d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;"><i class="bi bi-tools fs-2"></i></div>
+                    <div class="flex-grow-1 ms-3 text-end">
+                        <h3 class="fw-bold mb-0"><?php echo $count_barang_bkkh; ?></h3>
+                        <p class="text-muted mb-0">Verifikasi Barang</p>
+                    </div>
+                </div>
+                <div class="card-footer bg-transparent border-0 text-end py-2">
+                    <a href="index.php?page=verifikasi_barang_bkkh" class="small stretched-link text-decoration-none">Kelola <i class="bi bi-arrow-right"></i></a>
                 </div>
             </div>
         </div>
@@ -388,11 +590,185 @@ if (!empty($status_lpj_to_check)) {
         </div>
     </div>
     <?php endif; ?>
+
+    <!-- Tabel Khusus BKKH: Verifikasi Peminjaman Tempat -->
+    <?php if ($user_role == 'bkh'): ?>
+    <?php 
+    $sql_t_bkkh = "SELECT p.*, r.nama_ruangan, u.nama_lengkap AS nama_ormawa FROM peminjaman_tempat p JOIN master_ruangan r ON p.id_ruangan = r.id_ruangan JOIN users u ON p.id_user_ormawa = u.id_user WHERE p.status_bkkh = 'Pending' ORDER BY p.tgl_pengajuan DESC";
+    $res_t_bkkh = $conn->query($sql_t_bkkh);
+    ?>
+    <div class="card mb-4 shadow-sm">
+        <div class="card-header bg-white border-0 py-3"><i class="bi bi-building-check me-2"></i>Antrean Verifikasi Tempat (BKKH)</div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Ormawa</th>
+                            <th>Kegiatan</th>
+                            <th>Ruangan</th>
+                            <th>Waktu</th>
+                            <th class="text-center">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if ($res_t_bkkh->num_rows > 0): ?>
+                            <?php while($row = $res_t_bkkh->fetch_assoc()): ?>
+                            <tr>
+                                <td><?php echo htmlspecialchars($row['nama_ormawa']); ?></td>
+                                <td><?php echo htmlspecialchars($row['nama_kegiatan']); ?></td>
+                                <td><span class="badge bg-primary-subtle text-primary"><?php echo htmlspecialchars($row['nama_ruangan']); ?></span></td>
+                                <td class="small"><?php echo date('d/m/Y', strtotime($row['tgl_mulai'])); ?> (<?php echo $row['jam_mulai']; ?>)</td>
+                                <td class="text-center"><a href="index.php?page=verifikasi_tempat" class="btn btn-outline-primary btn-sm rounded-pill">Proses</a></td>
+                            </tr>
+                            <?php endwhile; ?>
+                        <?php else: ?>
+                            <tr><td colspan="5" class="text-center py-3 text-muted">Tidak ada antrean verifikasi tempat.</td></tr>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabel Khusus BKKH: Verifikasi Peminjaman Barang -->
+    <?php 
+    $sql_b_bkkh = "SELECT p.*, u.nama_lengkap AS nama_ormawa FROM peminjaman_barang p JOIN users u ON p.id_user_ormawa = u.id_user WHERE p.status_bkkh = 'Pending' ORDER BY p.tgl_pengajuan DESC";
+    $res_b_bkkh = $conn->query($sql_b_bkkh);
+    ?>
+    <div class="card mb-4 shadow-sm">
+        <div class="card-header bg-white border-0 py-3"><i class="bi bi-tools me-2"></i>Antrean Verifikasi Barang (BKKH)</div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Ormawa</th>
+                            <th>Kegiatan</th>
+                            <th>Barang</th>
+                            <th>Waktu</th>
+                            <th class="text-center">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if ($res_b_bkkh->num_rows > 0): ?>
+                            <?php while($row = $res_b_bkkh->fetch_assoc()): ?>
+                            <tr>
+                                <td><?php echo htmlspecialchars($row['nama_ormawa']); ?></td>
+                                <td><?php echo htmlspecialchars($row['nama_kegiatan']); ?></td>
+                                <td>
+                                    <div class="extra-small">
+                                        <?php 
+                                        $items = json_decode($row['kebutuhan_barang'], true);
+                                        if(is_array($items)) {
+                                            foreach($items as $it) {
+                                                $id_b = isset($it['id_barang']) ? (int)$it['id_barang'] : 0;
+                                                if ($id_b > 0) {
+                                                    $b_res = $conn->query("SELECT nama_barang FROM master_barang WHERE id_barang = $id_b");
+                                                    $b_n = $b_res ? $b_res->fetch_assoc() : null;
+                                                    echo '<span class="badge bg-secondary-subtle text-dark me-1">'.htmlspecialchars($b_n['nama_barang']??'Item').'</span>';
+                                                }
+                                            }
+                                        }
+                                        ?>
+                                    </div>
+                                </td>
+                                <td class="small"><?php echo date('d/m/Y', strtotime($row['tgl_mulai'])); ?></td>
+                                <td class="text-center"><a href="index.php?page=verifikasi_barang_bkkh" class="btn btn-outline-success btn-sm rounded-pill">Proses</a></td>
+                            </tr>
+                            <?php endwhile; ?>
+                        <?php else: ?>
+                            <tr><td colspan="5" class="text-center py-3 text-muted">Tidak ada antrean verifikasi barang.</td></tr>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
+
+    <!-- Kalender Peminjaman Terpadu -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-header bg-white border-0 py-3">
+                    <h5 class="mb-0 fw-bold"><i class="bi bi-calendar-check me-2 text-primary"></i> Jadwal Terpadu Fasilitas & Barang</h5>
+                    <p class="text-muted small mb-0">Klik pada agenda untuk melihat detail kegiatan</p>
+                </div>
+                <div class="card-body">
+                    <div id="calendar"></div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
+
+<!-- FullCalendar & SweetAlert2 -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<link href='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css' rel='stylesheet' />
+<script src='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js'></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var calendarEl = document.getElementById('calendar');
+    if(calendarEl) {
+        var calendar = new FullCalendar.Calendar(calendarEl, {
+            initialView: 'dayGridMonth',
+            locale: 'id',
+            headerToolbar: {
+                left: 'prev,next today',
+                center: 'title',
+                right: 'dayGridMonth,timeGridWeek,timeGridDay'
+            },
+            buttonText: {
+                today: 'Hari Ini',
+                month: 'Bulan',
+                week: 'Minggu',
+                day: 'Hari'
+            },
+            events: <?php echo $events_json; ?>,
+            eventDisplay: 'block', // Force events to be blocks/bars
+            eventTimeFormat: { 
+                hour: '2-digit',
+                minute: '2-digit',
+                meridiem: false,
+                hour12: false
+            },
+            eventClick: function(info) {
+                Swal.fire({
+                    title: info.event.title,
+                    html: `<div class="text-start">
+                            <hr>
+                            <p>${info.event.extendedProps.description}</p>
+                           </div>`,
+                    icon: 'info',
+                    confirmButtonText: 'Tutup'
+                });
+            }
+        });
+        calendar.render();
+    }
+});
+</script>
+
+<style>
+/* Custom FullCalendar styling for premium look */
+.fc-event {
+    border: none !important;
+    padding: 2px 4px !important;
+    font-size: 0.85rem !important;
+    border-radius: 4px !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+.fc-v-event .fc-event-main {
+    color: #fff !important;
+}
+.fc-daygrid-event-dot {
+    display: none !important; /* Hide the dot if it still appears */
+}
+</style>
 
 <!-- === PENAMBAHAN BARU: Skrip untuk SweetAlert2 Notifikasi Dana Cair === -->
 <?php if (!empty($notifikasi_cair)): ?>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Fungsi untuk menandai notifikasi sebagai sudah dilihat

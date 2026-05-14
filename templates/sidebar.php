@@ -28,7 +28,14 @@ $page_title_map = [
     'manage_users' => 'Manajemen Pengguna', 'tambah_user' => 'Tambah Pengguna', 'edit_user' => 'Edit Pengguna',
     'ajukan_pencairan' => 'Ajukan Pencairan', 'arsip_surat' => 'Arsip Surat Balasan',
     'proses' => 'Proses Pencairan Dana', 'manage_saldo' => 'Manajemen Saldo', 'atur_saldo' => 'Atur Saldo Pengguna',
-    'profil' => 'Atur Profil', 'atur_sistem' => 'Pengaturan Sistem'
+    'profil' => 'Atur Profil', 'atur_sistem' => 'Pengaturan Sistem', 'arsip_lpj' => 'Arsip LPJ', 'peminjaman_tempat' => 'Peminjaman Tempat', 'verifikasi_tempat' => 'Verifikasi Peminjaman Tempat', 'buat_proposal' => 'Buat Proposal Otomatis', 'arsip_proposal' => 'Arsip Proposal', 'edit_proposal' => 'Edit Proposal', 'buat_surat_lain' => 'Buat Surat Lainnya', 'arsip_surat_lain' => 'Arsip Surat Lainnya', 'buat_lpj_otomatis' => 'Buat LPJ Otomatis', 'arsip_lpj_otomatis' => 'Arsip LPJ Otomatis', 'arsip_digital' => 'Pusat Arsip Digital Persuratan',
+    'sarpras_verifikasi_ruangan' => 'Verifikasi Ruangan (Sarpras)',
+    'sarpras_verifikasi_barang' => 'Verifikasi Barang (Sarpras)',
+    'manage_barang' => 'Manajemen Inventaris Barang',
+    'pusat_informasi' => 'Pusat Informasi & Berita',
+    'jadwal_rapat' => 'Jadwal Rapat',
+    'manage_aspirasi' => 'Kelola Aspirasi (BPM)',
+    'buat_surat_peringatan' => 'Buat Surat Peringatan (BPM/BKKH)'
 ];
 $current_title = $page_title_map[$currentPage] ?? '';
 ?>
@@ -178,13 +185,114 @@ body.dark-mode .theme-icon-current {
                                 <i class="bi bi-plus-circle me-2"></i> Buat Pengajuan
                             </a>
                         </li>
+                        <li>
+                            <a href="index.php?page=peminjaman_tempat" class="nav-link text-white <?php echo ($currentPage == 'peminjaman_tempat') ? 'active' : ''; ?>">
+                                <i class="bi bi-building me-2"></i> Peminjaman Tempat
+                            </a>
+                        </li>
+                        <li>
+                            <a href="index.php?page=peminjaman_barang" class="nav-link text-white <?php echo ($currentPage == 'peminjaman_barang') ? 'active' : ''; ?>">
+                                <i class="bi bi-tools me-2"></i> Peminjaman Barang
+                            </a>
+                        </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-white dropdown-toggle <?php echo (in_array($currentPage, ['buat_proposal', 'arsip_proposal', 'edit_proposal', 'buat_surat_lain', 'arsip_surat_lain'])) ? 'active' : ''; ?>" 
+                           data-bs-toggle="collapse" href="#menuPersuratan" role="button" aria-expanded="false">
+                            <i class="bi bi-file-earmark-text me-2"></i> Persuratan Digital
+                        </a>
+                        <div class="collapse <?php echo (in_array($currentPage, ['buat_proposal', 'arsip_proposal', 'edit_proposal', 'buat_surat_lain', 'arsip_surat_lain'])) ? 'show' : ''; ?>" id="menuPersuratan">
+                            <ul class="nav flex-column ms-3 mt-1">
+                                <li class="nav-item">
+                                    <a href="index.php?page=buat_proposal" class="nav-link text-white py-1 <?php echo ($currentPage == 'buat_proposal') ? 'fw-bold' : ''; ?>">
+                                        <i class="bi bi-magic me-2"></i> Buat Proposal
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="index.php?page=buat_surat_lain" class="nav-link text-white py-1 <?php echo ($currentPage == 'buat_surat_lain') ? 'fw-bold' : ''; ?>">
+                                        <i class="bi bi-file-earmark-plus me-2"></i> Buat Surat Lain
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="index.php?page=buat_lpj_otomatis" class="nav-link text-white py-1 <?php echo ($currentPage == 'buat_lpj_otomatis') ? 'fw-bold' : ''; ?>">
+                                        <i class="bi bi-check2-square me-2"></i> Buat LPJ
+                                    </a>
+                                </li>
+                                <li class="nav-item border-top mt-2 pt-2">
+                                    <a href="index.php?page=arsip_digital" class="nav-link text-white py-1 <?php echo ($currentPage == 'arsip_digital') ? 'active bg-primary rounded' : ''; ?>">
+                                        <i class="bi bi-collection-play me-2"></i> 📂 Arsip Digital
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
+                    </li>
                     <?php endif; ?>
                     <li>
                         <a href="index.php?page=riwayat" class="nav-link text-white <?php echo (in_array($currentPage, ['riwayat', 'detail', 'edit', 'upload_lpj', 'revisi_lpj'])) ? 'active' : ''; ?>">
                             <i class="bi bi-clock-history me-2"></i> Riwayat
                         </a>
                     </li>
+                    <li>
+                        <a href="index.php?page=arsip_lpj" class="nav-link text-white <?php echo ($currentPage == 'arsip_lpj') ? 'active' : ''; ?>">
+                            <i class="bi bi-archive-fill me-2"></i> Arsip LPJ
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="index.php?page=pusat_informasi" class="nav-link text-white <?php echo ($currentPage == 'pusat_informasi') ? 'active bg-primary rounded' : ''; ?>">
+                            <i class="bi bi-megaphone-fill me-2"></i> Pusat Informasi & Berita
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="index.php?page=jadwal_rapat" class="nav-link text-white <?php echo ($currentPage == 'jadwal_rapat') ? 'active bg-primary rounded' : ''; ?>">
+                            <i class="bi bi-calendar-check-fill me-2"></i> Jadwal Rapat
+                        </a>
+                    </li>
+                    <?php if ($user_role === 'bpm'): ?>
+                    <li class="nav-item">
+                        <a href="index.php?page=buat_surat_peringatan" class="nav-link text-white <?php echo ($currentPage == 'buat_surat_peringatan') ? 'active bg-primary rounded' : ''; ?>">
+                            <i class="bi bi-file-earmark-medical-fill me-2 text-danger"></i> Buat Surat Peringatan
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="index.php?page=manage_aspirasi" class="nav-link text-white <?php echo ($currentPage == 'manage_aspirasi') ? 'active bg-primary rounded' : ''; ?>">
+                            <i class="bi bi-chat-left-text-fill me-2 text-warning"></i> Kelola Aspirasi
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="index.php?page=manage_regulasi" class="nav-link text-white <?php echo ($currentPage == 'manage_regulasi') ? 'active bg-primary rounded' : ''; ?>">
+                            <i class="bi bi-journal-text me-2"></i> Kelola Regulasi
+                        </a>
+                    </li>
+                    <?php endif; ?>
+                <?php endif; // End Ormawa/BEM/BPM block ?>
+
+                <!-- MENU BAGIAN SARPRAS RUANGAN -->
+                <?php if ($user_role == 'sarpras'): ?>
+                    <li class="nav-item">
+                        <a href="index.php?page=sarpras_verifikasi_ruangan" class="nav-link text-white <?php echo ($currentPage == 'sarpras_verifikasi_ruangan') ? 'active bg-primary' : ''; ?>">
+                            <i class="bi bi-building-check me-2"></i> Verifikasi Ruangan
+                        </a>
+                    </li>
                 <?php endif; ?>
+
+                <!-- MENU BAGIAN SARPRAS BARANG -->
+                <?php if ($user_role == 'sarpras_barang'): ?>
+                    <li class="nav-item">
+                        <a href="index.php?page=sarpras_verifikasi_barang" class="nav-link text-white <?php echo ($currentPage == 'sarpras_verifikasi_barang') ? 'active bg-primary' : ''; ?>">
+                            <i class="bi bi-tools me-2"></i> Verifikasi Barang
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="index.php?page=manage_barang" class="nav-link text-white <?php echo ($currentPage == 'manage_barang') ? 'active bg-primary' : ''; ?>">
+                            <i class="bi bi-box-seam me-2"></i> Master Barang
+                        </a>
+                    </li>
+                <?php endif; ?>
+
+                <li class="nav-item">
+                    <a href="index.php?page=profil" class="nav-link text-white <?php echo ($currentPage == 'profil') ? 'active bg-primary' : ''; ?>">
+                        <i class="bi bi-person-circle me-2"></i> Profil
+                    </a>
+                </li>
                 
                 <?php if (in_array($user_role, ['bem', 'bpm', 'bkh', 'wr3'])): ?>
                 <?php endif; ?>
@@ -217,6 +325,16 @@ body.dark-mode .theme-icon-current {
                     <li>
                         <a href="index.php?page=arsip_surat" class="nav-link text-white <?php echo ($currentPage == 'arsip_surat') ? 'active' : ''; ?>">
                             <i class="bi bi-archive-fill me-2"></i> Arsip Surat
+                        </a>
+                    </li>
+                    <li>
+                        <a href="index.php?page=buat_surat_peringatan" class="nav-link text-white <?php echo ($currentPage == 'buat_surat_peringatan') ? 'active bg-primary rounded' : ''; ?>">
+                            <i class="bi bi-file-earmark-medical-fill me-2 text-danger"></i> Buat Surat Peringatan
+                        </a>
+                    </li>
+                    <li>
+                        <a href="index.php?page=verifikasi_tempat" class="nav-link text-white <?php echo ($currentPage == 'verifikasi_tempat') ? 'active' : ''; ?>">
+                            <i class="bi bi-building-check me-2"></i> Verifikasi Tempat
                         </a>
                     </li>
                 <?php endif; ?>

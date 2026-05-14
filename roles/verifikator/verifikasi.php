@@ -53,8 +53,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['aksi'])) {
                 // --- AKHIR PERBAIKAN ---
                 break;
             case 'wr3':
-                $new_status = 'Disetujui WR3, Siap Diajukan ke Bendahara'; // Status internal database
-                $history_message = 'Proposal disetujui oleh WR3 & Dikembalikan ke BKKH' . ($catatan ? ' Catatan: ' . $catatan : ' Catatan: -');
+                $new_status = 'Diajukan ke Bendahara'; // Berubah: Langsung ke Bendahara
+                $history_message = 'Proposal disetujui oleh WR3 & Diteruskan ke Bendahara.' . ($catatan ? ' Catatan: ' . $catatan : ' Catatan: -');
                 break;
         }
     } else { // Jika aksi === 'tolak'

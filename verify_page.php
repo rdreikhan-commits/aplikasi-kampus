@@ -11,11 +11,78 @@ require_once 'functions.php';
 // Ambil parameter dari URL
 $id_pengajuan = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 $unique_code_from_url = isset($_GET['verify']) ? trim($_GET['verify']) : '';
+$type = isset($_GET['type']) ? trim($_GET['type']) : 'proposal'; // proposal atau surat
+$signer_type = isset($_GET['signer']) ? trim($_GET['signer']) : '';
 $verification_data = null;
 $error_message = '';
 
-if ($id_pengajuan > 0 && !empty($unique_code_from_url)) {
-    // Langkah 1: Validasi kode unik dan ambil data dasar
+if ($type === 'surat' && $id_pengajuan > 0) {
+    // Verifikasi Surat Otomatis
+    $stmt = $conn->prepare(
+        "SELECT s.*, u.nama_lengkap AS nama_ormawa, u.role 
+         FROM surat_otomatis s 
+         JOIN users u ON s.id_user_ormawa = u.id_user 
+         WHERE s.id_surat = ?"
+    );
+    $stmt->bind_param("i", $id_pengajuan);
+    $stmt->execute();
+    $res = $stmt->get_result();
+    if ($res->num_rows > 0) {
+        $surat = $res->fetch_assoc();
+        $verification_data = [
+            'nama_kegiatan' => $surat['perihal'],
+            'nama_ormawa'   => $surat['nama_ormawa'],
+            'status_saat_ini' => $surat['status'],
+            'pejabat_bkh'   => $surat['ttd_nama_kustom'] ?: $surat['nama_ormawa'],
+            'tanggal_bkh'   => $surat['tgl_dibuat'],
+            'id_doc'        => $surat['id_surat'],
+            'type_doc'      => 'surat'
+        ];
+    } else {
+        $error_message = "Data surat tidak ditemukan dalam sistem.";
+    }
+} elseif ($type === 'proposal_otomatis' && $id_pengajuan > 0) {
+    // Verifikasi Proposal Otomatis
+    $stmt = $conn->prepare(
+        "SELECT p.*, u.nama_lengkap AS nama_ormawa, u.role 
+         FROM proposal_otomatis p 
+         JOIN users u ON p.id_user_ormawa = u.id_user 
+         WHERE p.id_proposal = ?"
+    );
+    $stmt->bind_param("i", $id_pengajuan);
+    $stmt->execute();
+    $res = $stmt->get_result();
+    if ($res->num_rows > 0) {
+        $prop = $res->fetch_assoc();
+        
+        // Logic untuk menentukan siapa yang tanda tangan berdasarkan parameter 'signer'
+        $pejabat_ttd = $prop['nama_ormawa'];
+        if ($signer_type === 'ketua_pelaksana') {
+            // Kita perlu ambil nama ketua pelaksana dari JSON atau relasi
+            // Tapi karena kita sudah punya fungsi di view_proposal, kita coba tiru logicnya
+            // Untuk demo ini, kita asumsikan data TTD sudah tersedia di profil ormawa
+            $pejabat_ttd = "KETUA PELAKSANA (" . $prop['nama_ormawa'] . ")";
+            // Jika ingin lebih detail, bisa query tabel users lagi
+        } elseif ($signer_type === 'sekretaris') {
+            $pejabat_ttd = "SEKRETARIS (" . $prop['nama_ormawa'] . ")";
+        } elseif ($signer_type === 'ketua_ormawa') {
+            $pejabat_ttd = "KETUA " . strtoupper($prop['nama_ormawa']);
+        }
+
+        $verification_data = [
+            'nama_kegiatan' => $prop['nama_kegiatan'],
+            'nama_ormawa'   => $prop['nama_ormawa'],
+            'status_saat_ini' => $prop['status'],
+            'pejabat_bkh'   => $pejabat_ttd,
+            'tanggal_bkh'   => $prop['tgl_dibuat'],
+            'id_doc'        => $prop['id_proposal'],
+            'type_doc'      => 'proposal_otomatis'
+        ];
+    } else {
+        $error_message = "Data proposal tidak ditemukan dalam sistem.";
+    }
+} elseif ($id_pengajuan > 0 && !empty($unique_code_from_url)) {
+    // Verifikasi Pengajuan Proposal (Existing)
     $stmt = $conn->prepare(
         "SELECT p.nama_kegiatan, p.status AS status_saat_ini, u.nama_lengkap AS nama_ormawa
          FROM pengajuan p
@@ -28,6 +95,8 @@ if ($id_pengajuan > 0 && !empty($unique_code_from_url)) {
     
     if ($result->num_rows > 0) {
         $verification_data = $result->fetch_assoc();
+        $verification_data['id_doc'] = $id_pengajuan;
+        $verification_data['type_doc'] = 'proposal';
 
         // Langkah 2: Ambil seluruh riwayat untuk dianalisis
         $stmt_hist = $conn->prepare(
@@ -69,7 +138,7 @@ if ($id_pengajuan > 0 && !empty($unique_code_from_url)) {
     }
     $stmt->close();
 } else {
-    $error_message = "Parameter verifikasi tidak lengkap.";
+    $error_message = "Parameter verifikasi tidak lengkap atau format QR salah.";
 }
 
 // Menentukan kelas tema berdasarkan hasil verifikasi
@@ -214,7 +283,7 @@ $theme_class = $verification_data ? 'theme-valid' : 'theme-invalid';
                         <span class="value"><span class="badge bg-primary"><?php echo htmlspecialchars($verification_data['status_saat_ini']); ?></span></span>
                     </li>
                     <li>
-                        <span class="label">Disetujui oleh</span>
+                        <span class="label">Ditandatangani secara elektronik oleh</span>
                         <span class="value">
                             <?php echo $verification_data['pejabat_bkh'] ? htmlspecialchars($verification_data['pejabat_bkh']) : '<em class="text-warning">BKKH</em>'; ?>
                             <?php if ($verification_data['tanggal_bkh']): ?>
@@ -222,16 +291,33 @@ $theme_class = $verification_data ? 'theme-valid' : 'theme-invalid';
                             <?php endif; ?>
                         </span>
                     </li>
+                    <?php if (isset($verification_data['pejabat_wr3']) || isset($verification_data['tanggal_wr3'])): ?>
                     <li>
-                        <span class="label">Disetujui oleh</span>
+                        <span class="label">Disetujui oleh Pejabat</span>
                         <span class="value">
-                             <?php echo $verification_data['pejabat_wr3'] ? htmlspecialchars($verification_data['pejabat_wr3']) : '<em class="text-warning">WAKIL REKTOR3</em>'; ?>
-                            <?php if ($verification_data['tanggal_wr3']): ?>
+                             <?php echo !empty($verification_data['pejabat_wr3']) ? htmlspecialchars($verification_data['pejabat_wr3']) : '<em class="text-warning">WAKIL REKTOR 3</em>'; ?>
+                            <?php if (!empty($verification_data['tanggal_wr3'])): ?>
                                 <small><?php echo date('d F Y, H:i', strtotime($verification_data['tanggal_wr3'])); ?> WIB</small>
                             <?php endif; ?>
                         </span>
                     </li>
+                    <?php endif; ?>
                 </ul>
+                <div class="mt-5 text-center">
+                    <?php if ($verification_data['type_doc'] === 'surat'): ?>
+                        <a href="index.php?page=view_surat_lain&id=<?php echo $verification_data['id_doc']; ?>" class="btn btn-primary rounded-pill px-5 py-3 fw-bold">
+                            <i class="bi bi-download me-2"></i> Download / Cetak Dokumen
+                        </a>
+                    <?php elseif ($verification_data['type_doc'] === 'proposal_otomatis'): ?>
+                        <a href="index.php?page=view_proposal&id=<?php echo $verification_data['id_doc']; ?>" class="btn btn-primary rounded-pill px-5 py-3 fw-bold">
+                            <i class="bi bi-download me-2"></i> Download Proposal
+                        </a>
+                    <?php else: ?>
+                        <a href="index.php?page=view_proposal&id=<?php echo $verification_data['id_doc']; ?>" class="btn btn-primary rounded-pill px-5 py-3 fw-bold">
+                            <i class="bi bi-download me-2"></i> Download Proposal
+                        </a>
+                    <?php endif; ?>
+                </div>
             </div>
         <?php else: ?>
             <!-- Tampilan Jika Verifikasi Gagal -->
