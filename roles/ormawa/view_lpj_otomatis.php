@@ -82,9 +82,18 @@ $ttd3 = $getTTD($lpj['ttd_3_key'], $user_ormawa, $lpj['ttd_3_file']);
         <div class="header">
             <?php if(!empty($konfig['kop_logo'])): ?><img src="uploads/sistem/<?php echo $konfig['kop_logo']; ?>" style="height: 80px;"><?php endif; ?>
             <div style="text-align: center; flex-grow: 1;">
-                <h1 style="font-size: 14pt; margin: 0;"><?php echo htmlspecialchars($konfig['kop_baris1'] ?? 'INSTITUT TEKNOLOGI GARUT'); ?></h1>
-                <h2 style="font-size: 12pt; margin: 5px 0; text-transform: uppercase;"><?php echo htmlspecialchars($lpj['nama_ormawa']); ?></h2>
-                <p style="font-size: 9pt; margin: 0; font-style: italic;"><?php echo htmlspecialchars($konfig['kop_baris3'] ?? ''); ?></p>
+                <h1 style="font-size: 14pt; margin: 0; text-transform: uppercase; font-weight: bold;"><?php echo htmlspecialchars($lpj['nama_ormawa']); ?></h1>
+                <h2 style="font-size: 12pt; margin: 5px 0; text-transform: uppercase; font-weight: bold;">INSTITUT TEKNOLOGI GARUT</h2>
+                <p style="font-size: 9.5pt; margin: 5px 0 0; font-style: italic; font-weight: normal; line-height: 1.3;">
+                    <?php 
+                    $alamat = !empty($user_ormawa['alamat']) ? $user_ormawa['alamat'] : 'Jl. Mayor Syamsu No. 1, Jayaraga, Kec. Tarogong Kidul, Kabupaten Garut, Jawa Barat';
+                    $telepon = !empty($user_ormawa['telepon']) ? $user_ormawa['telepon'] : '';
+                    echo htmlspecialchars($alamat);
+                    if (!empty($telepon)) {
+                        echo " | Telp: " . htmlspecialchars($telepon);
+                    }
+                    ?>
+                </p>
             </div>
             <?php if(!empty($user_ormawa['logo_ormawa'])): ?><img src="uploads/profil/<?php echo $user_ormawa['logo_ormawa']; ?>" style="height: 80px;"><?php endif; ?>
         </div>

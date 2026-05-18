@@ -461,6 +461,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $nama_ketua = sanitize_input($conn, $_POST['nama_ketua'] ?? '');
         $nama_sekretaris = sanitize_input($conn, $_POST['nama_sekretaris'] ?? '');
         $nama_bendahara = sanitize_input($conn, $_POST['nama_bendahara'] ?? '');
+        $alamat = sanitize_input($conn, $_POST['alamat'] ?? '');
+        $telepon = sanitize_input($conn, $_POST['telepon'] ?? '');
 
         // Ambil data lama untuk TTD & Logo
         $stmt_old = $conn->prepare("SELECT foto_profil, logo_ormawa, ttd_ketua, ttd_sekretaris, ttd_bendahara FROM users WHERE id_user = ?");
@@ -506,8 +508,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $new_ttd_b = $handleUpload('ttd_bendahara', $old_ttd_b);
 
         // Update database
-        $stmt_update = $conn->prepare("UPDATE users SET nama_lengkap = ?, foto_profil = ?, logo_ormawa = ?, nama_ketua = ?, nama_sekretaris = ?, nama_bendahara = ?, ttd_ketua = ?, ttd_sekretaris = ?, ttd_bendahara = ? WHERE id_user = ?");
-        $stmt_update->bind_param("sssssssssi", $nama_lengkap, $new_photo_name, $new_logo_name, $nama_ketua, $nama_sekretaris, $nama_bendahara, $new_ttd_k, $new_ttd_s, $new_ttd_b, $id_user);
+        $stmt_update = $conn->prepare("UPDATE users SET nama_lengkap = ?, foto_profil = ?, logo_ormawa = ?, nama_ketua = ?, nama_sekretaris = ?, nama_bendahara = ?, ttd_ketua = ?, ttd_sekretaris = ?, ttd_bendahara = ?, alamat = ?, telepon = ? WHERE id_user = ?");
+        $stmt_update->bind_param("sssssssssssi", $nama_lengkap, $new_photo_name, $new_logo_name, $nama_ketua, $nama_sekretaris, $nama_bendahara, $new_ttd_k, $new_ttd_s, $new_ttd_b, $alamat, $telepon, $id_user);
 
         if ($stmt_update->execute()) {
             $_SESSION['nama_lengkap'] = $nama_lengkap;

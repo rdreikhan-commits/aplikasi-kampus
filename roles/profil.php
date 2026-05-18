@@ -6,7 +6,7 @@
 
 // Ambil data user yang sedang login dari database
 $id_user = $_SESSION['user_id'];
-$stmt = $conn->prepare("SELECT nama_lengkap, username, foto_profil, logo_ormawa, nama_ketua, nama_sekretaris, nama_bendahara, ttd_ketua, ttd_sekretaris, ttd_bendahara FROM users WHERE id_user = ?");
+$stmt = $conn->prepare("SELECT nama_lengkap, username, foto_profil, logo_ormawa, nama_ketua, nama_sekretaris, nama_bendahara, ttd_ketua, ttd_sekretaris, ttd_bendahara, alamat, telepon FROM users WHERE id_user = ?");
 if ($stmt === false) {
     die("Gagal mempersiapkan statement: " . $conn->error);
 }
@@ -43,8 +43,19 @@ $foto_path = !empty($user['foto_profil']) ? 'uploads/profil/' . $user['foto_prof
                         </div>
 
                         <div class="mb-3">
-                            <label for="nama_lengkap" class="form-label">Nama Lengkap</label>
+                            <label for="nama_lengkap" class="form-label">Nama Lengkap Ormawa</label>
                             <input type="text" name="nama_lengkap" id="nama_lengkap" class="form-control" value="<?php echo htmlspecialchars($user['nama_lengkap']); ?>" required>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="alamat" class="form-label">Alamat Ormawa (Untuk Kop Surat)</label>
+                                <input type="text" name="alamat" id="alamat" class="form-control" value="<?php echo htmlspecialchars($user['alamat'] ?? ''); ?>" placeholder="Contoh: Jl. Mayor Syamsu No. 1, Garut">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="telepon" class="form-label">Nomor Telepon Ormawa</label>
+                                <input type="text" name="telepon" id="telepon" class="form-control" value="<?php echo htmlspecialchars($user['telepon'] ?? ''); ?>" placeholder="Contoh: 08123456789">
+                            </div>
                         </div>
 
                         <div class="row">

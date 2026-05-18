@@ -53,16 +53,20 @@ $path_ttd = (file_exists($ttd_path) && !empty($ttd_path)) ? $ttd_path : '';
     <title>Surat <?php echo $surat['jenis_surat']; ?> - <?php echo htmlspecialchars($surat['perihal']); ?></title>
     <style>
         body { font-family: 'Times New Roman', Times, serif; line-height: 1.5; color: #000; background: #f0f0f0; padding: 20px; }
-        .paper { background: #fff; width: 210mm; min-height: 297mm; padding: 25mm 20mm; margin: auto; box-shadow: 0 0 10px rgba(0,0,0,0.1); position: relative; }
+        .paper { background: #fff; width: 210mm; min-height: 297mm; padding: 25mm 20mm 40mm 20mm; margin: auto; box-shadow: 0 0 10px rgba(0,0,0,0.1); position: relative; box-sizing: border-box; }
         .header { display: flex; align-items: center; justify-content: space-between; border-bottom: 3px double #000; padding-bottom: 10px; margin-bottom: 20px; }
         .content { margin-top: 30px; }
         .meta-table { width: 100%; border: none; margin-bottom: 20px; }
         .meta-table td { padding: 2px; vertical-align: top; }
         .signature-box { margin-top: 50px; float: right; text-align: center; width: 250px; }
         .sig-space { height: 80px; position: relative; }
+        @page {
+            size: A4;
+            margin: 0;
+        }
         @media print {
-            body { background: none; padding: 0; }
-            .paper { box-shadow: none; margin: 0; width: 100%; padding: 0; }
+            body { background: none; padding: 0; margin: 0; }
+            .paper { box-shadow: none; margin: 0; width: 210mm; min-height: 297mm; padding: 25mm 20mm 40mm 20mm; position: relative; box-sizing: border-box; background: white; }
             .no-print { display: none; }
         }
         
@@ -113,9 +117,18 @@ $path_ttd = (file_exists($ttd_path) && !empty($ttd_path)) ? $ttd_path : '';
             <?php else: ?><div style="width: 80px;"></div><?php endif; ?>
 
             <div style="text-align: center; flex-grow: 1;">
-                <h1 style="font-size: 14pt; margin: 0;"><?php echo htmlspecialchars($konfig['kop_baris1'] ?? 'INSTITUT TEKNOLOGI GARUT'); ?></h1>
-                <h2 style="font-size: 12pt; margin: 5px 0; text-transform: uppercase;"><?php echo htmlspecialchars($surat['nama_ormawa']); ?></h2>
-                <p style="font-size: 9pt; margin: 0; font-style: italic;"><?php echo htmlspecialchars($konfig['kop_baris3'] ?? ''); ?></p>
+                <h1 style="font-size: 14pt; margin: 0; text-transform: uppercase; font-weight: bold;"><?php echo htmlspecialchars($surat['nama_ormawa']); ?></h1>
+                <h2 style="font-size: 12pt; margin: 5px 0; text-transform: uppercase; font-weight: bold;">INSTITUT TEKNOLOGI GARUT</h2>
+                <p style="font-size: 9.5pt; margin: 5px 0 0; font-style: italic; font-weight: normal; line-height: 1.3;">
+                    <?php 
+                    $alamat = !empty($user_ormawa['alamat']) ? $user_ormawa['alamat'] : 'Jl. Mayor Syamsu No. 1, Jayaraga, Kec. Tarogong Kidul, Kabupaten Garut, Jawa Barat';
+                    $telepon = !empty($user_ormawa['telepon']) ? $user_ormawa['telepon'] : '';
+                    echo htmlspecialchars($alamat);
+                    if (!empty($telepon)) {
+                        echo " | Telp: " . htmlspecialchars($telepon);
+                    }
+                    ?>
+                </p>
             </div>
 
             <?php if(!empty($user_ormawa['logo_ormawa'])): ?>
